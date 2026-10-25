@@ -22,7 +22,7 @@ void *lockbox_create_contact(const void *contact);
 void *lockbox_create_contact_with_signing_key(const void *contact, const void *signing_key);
 void *lockbox_create_with_signing_key(const uint8_t *content_key, size_t key_len, const void *signing_key);
 // BEGIN generated file operation declaration
-/** Native file operation; mode is open/create/replace. A signer selects exclusive write access. See file_api.rs for credential, tuning and ownership contracts. */
+/** Native file operation; mode is open/read/write/create/replace. Credential unencrypted opens only an existing plaintext file read-only, with no secret or signer. See file_api.rs for tuning and ownership contracts. */
 void *lockbox_file(const char *path, size_t path_len, const char *mode, size_t mode_len, const char *credential, size_t credential_len, const uint8_t *secret, size_t secret_len, const void *contact, const void *signer, const char *cache_mode, size_t cache_len, uint64_t cache_bytes, const char *workload, size_t workload_len, const char *worker, size_t worker_len, size_t jobs);
 // END generated file operation declaration
 /** Opens existing in-memory archive bytes. */
@@ -66,6 +66,9 @@ RevaultBuffer lockbox_stat(const void *handle, const char *path, size_t path_len
 bool lockbox_set_variable(void *handle, const char *name, size_t name_len, const char *value, size_t value_len);
 bool lockbox_set_secret_variable(void *handle, const char *name, size_t name_len, const uint8_t *value, size_t value_len);
 RevaultBuffer lockbox_get_variable(const void *handle, const char *name, size_t name_len);
+RevaultBuffer contact_exchange_execute(const void *handle, const char *name, size_t name_len);
+RevaultBuffer lockbox_item_description(const void *handle, const char *name, size_t name_len);
+RevaultBuffer vault_directory_item_description(const void *handle, const char *name, size_t name_len);
 bool lockbox_get_secret_variable(const void *handle, const char *name, size_t name_len, void **output);
 bool lockbox_delete_variable(void *handle, const char *name, size_t name_len);
 bool lockbox_move_variables(void *handle, const uint8_t *moves_flatbuffer, size_t moves_len);
@@ -137,6 +140,7 @@ RevaultBuffer vault_key_decode_crockford(const char *code, size_t len);
 RevaultBuffer vault_key_hex_encode(const uint8_t *bytes, size_t len);
 RevaultBuffer vault_key_hex_decode(const char *text, size_t len);
 void *vault_directory_open(const char *root, size_t root_len, const uint8_t *password, size_t password_len);
+void *contact_exchange_open(const char *root, size_t root_len, const uint8_t *password, size_t password_len);
 uint32_t vault_structure_version_current(void);
 uint32_t vault_directory_probe_structure_version(const char *root, size_t root_len, const uint8_t *password, size_t password_len);
 void *vault_directory_open_or_create_default(const uint8_t *password, size_t password_len);
@@ -190,8 +194,15 @@ RevaultBuffer vault_directory_remembered_password(const void *handle, const uint
 RevaultBuffer vault_backup_default(const char *path, size_t path_len, bool overwrite);
 RevaultBuffer vault_restore_default(const char *path, size_t path_len, bool overwrite);
 void vault_directory_free(void *handle);
+void contact_exchange_free(void *handle);
 void *vault_read_only_open(const char *root, size_t root_len, const uint8_t *password, size_t password_len);
 void *vault_read_only_open_default(const uint8_t *password, size_t password_len);
+void *vault_read_only_load_private_key(const void *handle, const char *name, size_t name_len);
+void *vault_read_only_load_private_key_generation(const void *handle, const char *name, size_t name_len, uint16_t index);
+void *vault_read_only_load_owner_signing_key(const void *handle, const char *name, size_t name_len);
+void *vault_read_only_load_owner_signing_key_generation(const void *handle, const char *name, size_t name_len, uint16_t index);
+void *vault_read_only_load_profile_password(const void *handle, const char *name, size_t name_len);
+bool vault_read_only_remembered_password(const void *handle, const uint8_t *id, size_t id_len, void **output);
 RevaultBuffer vault_read_only_list_profile_names(const void *handle);
 RevaultBuffer vault_read_only_list_contact_names(const void *handle);
 RevaultBuffer vault_read_only_list_form_aliases(const void *handle);

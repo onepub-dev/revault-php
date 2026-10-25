@@ -6,6 +6,35 @@ namespace Revault;
 use Google\FlatBuffers\ByteBuffer;
 use Google\FlatBuffers\FlatbufferBuilder;
 
+/** Public reciprocal exchange status. Verification is a local trust decision; no management capability or private key is returned. */
+final class ContactExchangeStatus
+{
+    /** Creates a value from fields returned by the reVault API. */
+    public function __construct(public readonly string $id, public readonly string $relay, public readonly string $invitation, public readonly string $inviter_email, public readonly string $recipient_email, public readonly string $fingerprint, public readonly int $expires_ms, public readonly bool $accepted, public readonly bool $verified, public readonly string $contact_name, public readonly bool $relay_pending) {}
+    /** Random identifier of the saved exchange. */
+    public function getId(): mixed { return $this->id; }
+    /** Pinned HTTPS relay origin. */
+    public function getRelay(): mixed { return $this->relay; }
+    /** Invitation URL to share only with the intended recipient. */
+    public function getInvitation(): mixed { return $this->invitation; }
+    /** Signed claimed inviter email, not independently verified by the relay. */
+    public function getInviterEmail(): mixed { return $this->inviter_email; }
+    /** Signed claimed intended recipient email. */
+    public function getRecipientEmail(): mixed { return $this->recipient_email; }
+    /** Full shared fingerprint to compare independently; empty until both contributions are available. */
+    public function getFingerprint(): mixed { return $this->fingerprint; }
+    /** Signed invitation expiry in Unix milliseconds. */
+    public function getExpiresMs(): mixed { return $this->expires_ms; }
+    /** Whether both signed public key bundles are locally pinned. */
+    public function getAccepted(): mixed { return $this->accepted; }
+    /** Whether this Vault independently verified and saved the contact. */
+    public function getVerified(): mixed { return $this->verified; }
+    /** Local saved contact name, or empty before verification. */
+    public function getContactName(): mixed { return $this->contact_name; }
+    /** Whether the relay operation needs retrying; locally saved state is retained. */
+    public function getRelayPending(): mixed { return $this->relay_pending; }
+}
+
 /** Metadata for one file, directory, or symbolic link stored at a lockbox path. */
 final class LockboxEntry
 {
@@ -36,7 +65,7 @@ final class PathMove
 final class FormField
 {
     /** Creates a value from fields returned by the reVault API. */
-    public function __construct(public readonly string $id, public readonly string $label, public readonly string $kind, public readonly bool $required) {}
+    public function __construct(public readonly string $id, public readonly string $label, public readonly string $kind, public readonly bool $required, public readonly string $description = '', public readonly bool $has_description = false) {}
     /** Stable field identifier used when reading and writing records. */
     public function getId(): mixed { return $this->id; }
     /** Human-readable label presented to a person entering data. */
@@ -45,6 +74,10 @@ final class FormField
     public function getKind(): mixed { return $this->kind; }
     /** Whether a record must provide a value for this field. */
     public function getRequired(): mixed { return $this->required; }
+    /** Multiline guidance captured by this field definition revision. */
+    public function getDescription(): mixed { return $this->description; }
+    /** Whether guidance is present, including explicitly empty text. */
+    public function getHasDescription(): mixed { return $this->has_description; }
 }
 
 /** A versioned form schema used to validate and label structured records in a lockbox. */
@@ -87,7 +120,7 @@ final class FormValue
 final class FormRecord
 {
     /** Creates a value from fields returned by the reVault API. */
-    public function __construct(public readonly string $path, public readonly string $name, public readonly string $type_id, public readonly string $definition_alias, public readonly int $definition_revision, public readonly array $values) {}
+    public function __construct(public readonly string $path, public readonly string $name, public readonly string $type_id, public readonly string $definition_alias, public readonly int $definition_revision, public readonly array $values, public readonly string $description = '', public readonly bool $has_description = false) {}
     /** Absolute lockbox path that identifies the record. */
     public function getPath(): mixed { return $this->path; }
     /** Human-readable name assigned to this record. */
@@ -100,6 +133,10 @@ final class FormRecord
     public function getDefinitionRevision(): mixed { return $this->definition_revision; }
     /** Ordered non-secret field metadata and values. */
     public function getValues(): mixed { return $this->values; }
+    /** Multiline context specific to this record. */
+    public function getDescription(): mixed { return $this->description; }
+    /** Whether the record description is present, including empty text. */
+    public function getHasDescription(): mixed { return $this->has_description; }
 }
 
 /** The files and metadata recovered, or found damaged, while inspecting or salvaging a lockbox. */
@@ -334,11 +371,15 @@ final class RuntimeOptions
 final class Variable
 {
     /** Creates a value from fields returned by the reVault API. */
-    public function __construct(public readonly string $name, public readonly string $sensitivity) {}
+    public function __construct(public readonly string $name, public readonly string $sensitivity, public readonly string $description = '', public readonly bool $has_description = false) {}
     /** Name used to address the variable in the lockbox. */
     public function getName(): mixed { return $this->name; }
     /** Whether the value is ordinary text or a protected secret. */
     public function getSensitivity(): mixed { return $this->sensitivity; }
+    /** Multiline description stored with this variable. */
+    public function getDescription(): mixed { return $this->description; }
+    /** Whether the variable description is present, including empty text. */
+    public function getHasDescription(): mixed { return $this->has_description; }
 }
 
 /** Whether a lockbox is owner-signed and, when available, the signing-key fingerprint. */
@@ -552,6 +593,15 @@ final class ContactList
     public function getValues(): array { return $this->values; }
 }
 
+/** Ordered ContactExchangeStatus values returned by the corresponding list operation. */
+final class ContactExchangeStatusList
+{
+    /** @param list<ContactExchangeStatus> $values */
+    public function __construct(public readonly array $values) {}
+    /** Returns the ordered ContactExchangeStatus values. */
+    public function getValues(): array { return $this->values; }
+}
+
 /** Ordered ProfileHistory values returned by the corresponding list operation. */
 final class ProfileHistoryList
 {
@@ -621,6 +671,10 @@ final class OptionalString
 final class DomainCodec
 {
     private function __construct() {}
+    private static function fromContactExchangeStatus(\Revault\Internal\Transport\ContactExchangeStatus $value): ContactExchangeStatus
+    {
+        return new ContactExchangeStatus($value->getId() ?? '', $value->getRelay() ?? '', $value->getInvitation() ?? '', $value->getInviterEmail() ?? '', $value->getRecipientEmail() ?? '', $value->getFingerprint() ?? '', $value->getExpiresMs(), $value->getAccepted(), $value->getVerified(), $value->getContactName() ?? '', $value->getRelayPending());
+    }
     private static function fromLockboxEntry(\Revault\Internal\Transport\LockboxEntry $value): LockboxEntry
     {
         return new LockboxEntry($value->getPath() ?? '', $value->getKind(), $value->getLength(), $value->getPermissions());
@@ -631,7 +685,7 @@ final class DomainCodec
     }
     private static function fromFormField(\Revault\Internal\Transport\FormField $value): FormField
     {
-        return new FormField($value->getId() ?? '', $value->getLabel() ?? '', $value->getKind() ?? '', $value->getRequired());
+        return new FormField($value->getId() ?? '', $value->getLabel() ?? '', $value->getKind() ?? '', $value->getRequired(), $value->getDescription() ?? '', $value->getHasDescription());
     }
     private static function fromFormDefinition(\Revault\Internal\Transport\FormDefinition $value): FormDefinition
     {
@@ -643,7 +697,7 @@ final class DomainCodec
     }
     private static function fromFormRecord(\Revault\Internal\Transport\FormRecord $value): FormRecord
     {
-        return new FormRecord($value->getPath() ?? '', $value->getName() ?? '', $value->getTypeId() ?? '', $value->getDefinitionAlias() ?? '', $value->getDefinitionRevision(), self::tables($value, 'getValues', 'FormValue'));
+        return new FormRecord($value->getPath() ?? '', $value->getName() ?? '', $value->getTypeId() ?? '', $value->getDefinitionAlias() ?? '', $value->getDefinitionRevision(), self::tables($value, 'getValues', 'FormValue'), $value->getDescription() ?? '', $value->getHasDescription());
     }
     private static function fromRecoveryReport(\Revault\Internal\Transport\RecoveryReport $value): RecoveryReport
     {
@@ -703,7 +757,7 @@ final class DomainCodec
     }
     private static function fromVariable(\Revault\Internal\Transport\Variable $value): Variable
     {
-        return new Variable($value->getName() ?? '', $value->getSensitivity() ?? '');
+        return new Variable($value->getName() ?? '', $value->getSensitivity() ?? '', $value->getDescription() ?? '', $value->getHasDescription());
     }
     private static function fromOwnerInspection(\Revault\Internal\Transport\OwnerInspection $value): OwnerInspection
     {
@@ -732,6 +786,11 @@ final class DomainCodec
     private static function fromErrorDetails(\Revault\Internal\Transport\ErrorDetails $value): ErrorDetails
     {
         return new ErrorDetails($value->getCategory() ?? '', $value->getArtifactKind() ?? '', $value->getFoundVersion(), $value->getSupportedVersion(), $value->getMessage() ?? '', $value->getGuidance() ?? '');
+    }
+    /** @internal Decodes a native ContactExchangeStatus result. */
+    public static function decodeContactExchangeStatus(string $bytes): ContactExchangeStatus
+    {
+        return self::fromContactExchangeStatus(\Revault\Internal\Transport\ContactExchangeStatus::getRootAsContactExchangeStatus(ByteBuffer::wrap($bytes)));
     }
     /** @internal Decodes a native LockboxEntry result. */
     public static function decodeLockboxEntry(string $bytes): LockboxEntry
@@ -945,6 +1004,12 @@ final class DomainCodec
         $root = \Revault\Internal\Transport\ContactList::getRootAsContactList(ByteBuffer::wrap($bytes));
         return new ContactList(self::tables($root, 'getValues', 'Contact'));
     }
+    /** @internal Decodes a native ContactExchangeStatusList result. */
+    public static function decodeContactExchangeStatusList(string $bytes): ContactExchangeStatusList
+    {
+        $root = \Revault\Internal\Transport\ContactExchangeStatusList::getRootAsContactExchangeStatusList(ByteBuffer::wrap($bytes));
+        return new ContactExchangeStatusList(self::tables($root, 'getValues', 'ContactExchangeStatus'));
+    }
     /** @internal Decodes a native ProfileHistoryList result. */
     public static function decodeProfileHistoryList(string $bytes): ProfileHistoryList
     {
@@ -1015,7 +1080,7 @@ final class DomainCodec
     public static function encodeFormFields(array $fields): string
     {
         $builder = new FlatBufferBuilder(256); $offsets = [];
-        foreach ($fields as $field) { $id = $builder->createString($field->id); $label = $builder->createString($field->label); $kind = $builder->createString($field->kind); $offsets[] = \Revault\Internal\Transport\FormField::createFormField($builder, $id, $label, $kind, $field->required); }
+        foreach ($fields as $field) { $id = $builder->createString($field->id); $label = $builder->createString($field->label); $kind = $builder->createString($field->kind); $description = $builder->createString($field->description); $offsets[] = \Revault\Internal\Transport\FormField::createFormField($builder, $id, $label, $kind, $field->required, $description, $field->has_description); }
         $values = \Revault\Internal\Transport\FormFieldList::createValuesVector($builder, $offsets); $root = \Revault\Internal\Transport\FormFieldList::createFormFieldList($builder, $values); $builder->finish($root); return $builder->sizedByteArray();
     }
 }

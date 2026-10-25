@@ -83,6 +83,11 @@ final class BindingOperations
     {
         $output = $this->ffi->new('void *');
         $this->requireBool((bool) $getter(FFI::addr($output)));
+        return $this->withSecretHandle($output, $callback);
+    }
+
+    private function withSecretHandle(CData $output, callable $callback): mixed
+    {
         if (FFI::isNull($output)) { return null; }
         try {
             $length = $this->ffi->new('size_t');
@@ -335,6 +340,18 @@ final class BindingOperations
     public function lockboxGetVariable(CData $handle, string $name): \Revault\OptionalString
     {
         return $this->decode(\Revault\OptionalString::class, $this->ffi->lockbox_get_variable($handle, $name, strlen($name)));
+    }
+    public function contactExchangeExecute(CData $handle, string $name): \Revault\ContactExchangeStatusList
+    {
+        return $this->decode(\Revault\ContactExchangeStatusList::class, $this->ffi->contact_exchange_execute($handle, $name, strlen($name)));
+    }
+    public function lockboxItemDescription(CData $handle, string $name): \Revault\OptionalString
+    {
+        return $this->decode(\Revault\OptionalString::class, $this->ffi->lockbox_item_description($handle, $name, strlen($name)));
+    }
+    public function vaultDirectoryItemDescription(CData $handle, string $name): \Revault\OptionalString
+    {
+        return $this->decode(\Revault\OptionalString::class, $this->ffi->vault_directory_item_description($handle, $name, strlen($name)));
     }
 
     public function lockboxWithSecretVariable(CData $handle, string $name, callable $callback): mixed
@@ -691,6 +708,10 @@ final class BindingOperations
     {
         return $this->withBytes($password, fn(CData $passwordPointer, int $passwordLength) => $this->requireHandle($this->ffi->vault_directory_open($root, strlen($root), $passwordPointer, $passwordLength)));
     }
+    public function contactExchangeOpen(string $root, string $password): CData
+    {
+        return $this->withBytes($password, fn(CData $passwordPointer, int $passwordLength) => $this->requireHandle($this->ffi->contact_exchange_open($root, strlen($root), $passwordPointer, $passwordLength)));
+    }
 
     public function vaultStructureVersionCurrent(): int
     {
@@ -986,6 +1007,10 @@ final class BindingOperations
     {
         $this->ffi->vault_directory_free($handle);
     }
+    public function contactExchangeFree(CData $handle): void
+    {
+        $this->ffi->contact_exchange_free($handle);
+    }
 
     public function vaultReadOnlyOpen(string $root, string $password): CData
     {
@@ -995,6 +1020,37 @@ final class BindingOperations
     public function vaultReadOnlyOpenDefault(string $password): CData
     {
         return $this->withBytes($password, fn(CData $passwordPointer, int $passwordLength) => $this->requireHandle($this->ffi->vault_read_only_open_default($passwordPointer, $passwordLength)));
+    }
+
+    public function vaultReadOnlyLoadPrivateKey(CData $handle, string $name): CData
+    {
+        return $this->requireHandle($this->ffi->vault_read_only_load_private_key($handle, $name, strlen($name)));
+    }
+
+    public function vaultReadOnlyLoadPrivateKeyGeneration(CData $handle, string $name, int $index): CData
+    {
+        return $this->requireHandle($this->ffi->vault_read_only_load_private_key_generation($handle, $name, strlen($name), $index));
+    }
+
+    public function vaultReadOnlyLoadOwnerSigningKey(CData $handle, string $name): CData
+    {
+        return $this->requireHandle($this->ffi->vault_read_only_load_owner_signing_key($handle, $name, strlen($name)));
+    }
+
+    public function vaultReadOnlyLoadOwnerSigningKeyGeneration(CData $handle, string $name, int $index): CData
+    {
+        return $this->requireHandle($this->ffi->vault_read_only_load_owner_signing_key_generation($handle, $name, strlen($name), $index));
+    }
+
+    public function vaultReadOnlyLoadProfilePassword(CData $handle, string $name, callable $callback): mixed
+    {
+        return $this->withSecretHandle($this->requireHandle($this->ffi->vault_read_only_load_profile_password($handle, $name, strlen($name))), $callback);
+    }
+
+    public function vaultReadOnlyRememberedPassword(CData $handle, string $id, callable $callback): mixed
+    {
+        return $this->withBytes($id, fn(CData $bytes, int $length) =>
+            $this->withSecret(fn(CData $output) => (bool) $this->ffi->vault_read_only_remembered_password($handle, $bytes, $length, $output), $callback));
     }
 
     public function vaultReadOnlyListProfileNames(CData $handle): \Revault\StringList
